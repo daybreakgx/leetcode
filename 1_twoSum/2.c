@@ -2,64 +2,64 @@
 #include <stdlib.h>
 #include <string.h>
 
-struct hashTable {
-  struct hashData **head;
-  int hashSize;
-};
-
 struct hashData {
   int key;
   int value;
-  struct hashData *next;
+  struct hashData* next;
 };
 
-int initHashTable(struct hashTable *table, unsigned int tableSize) {
-  if (tableSize <= 0) {
+struct hashTable {
+  struct hashData** data;
+  int size;
+};
+
+int initHashTable(struct hashTable* table, int size) {
+  if (size <= 0) {
     return -1;
   }
-  table->head = malloc(sizeof(struct hashData *) * tableSize);
-  memset(table->head, 0, sizeof(struct hashData *) * tableSize);
-  if (table->head == NULL) {
-    free(table);
+  table->data = malloc(size * sizeof(struct hashData*));
+  if (table->data == NULL) {
+    printf("init hash table failed.\n");
     return -1;
   }
-  table->hashSize = tableSize;
+  memset(table->data, 0, sizeof(struct hashData*) * size);
+  table->size = size;
   return 0;
 }
 
-void freeHashTable(struct hashTable *table) {
-  if (table != NULL) {
-    for (int i = 0; i < table->hashSize; i++) {
-      struct hashData *head = table->head[i];
-      while (head != NULL) {
-        struct hashData *tmp = head;
-        head = head->next;
-        free(tmp);
-      }
+void freeHashTable(struct hashTable* table) {
+  for (int i = 0; i < table->size; i++) {
+    struct hashData* head = table->data[i];
+    while (head != NULL) {
+      struct hashData* tmp = head;
+      head = head->next;
+      free(tmp);
+      tmp = NULL;
     }
-    free(table->head);
-    table->head = NULL;
   }
+  free(table->data);
+  table->data = NULL;
+  return;
 }
+int hashFunction(int key, int size) { return abs(key) % size; }
 
-int hashFunction(int key, int tableSize) { return abs(key) % tableSize; }
-
-int insertData(struct hashTable *table, int key, int value) {
-  int hashValue = hashFunction(key, table->hashSize);
-  struct hashData *tmp = malloc(sizeof(struct hashData));
-  if (tmp == NULL) {
+int insertData(struct hashTable* table, int key, int value) {
+  int hashValue = hashFunction(key, table->size);
+  struct hashData* new = (struct hashData*)malloc(sizeof(struct hashData));
+  if (new == NULL) {
+    printf("malloc new hash data failed.\n");
     return -1;
   }
-  tmp->key = key;
-  tmp->value = value;
-  tmp->next = table->head[hashValue];
-  table->head[hashValue] = tmp;
+  new->key = key;
+  new->value = value;
+  new->next = table->data[hashValue];
+  table->data[hashValue] = new;
   return 0;
 }
 
-int findData(struct hashTable *table, int key) {
-  int hashValue = hashFunction(key, table->hashSize);
-  struct hashData *tmp = table->head[hashValue];
+int find(struct hashTable* table, int key) {
+  int hashValue = hashFunction(key, table->size);
+  struct hashData* tmp = table->data[hashValue];
   while (tmp != NULL) {
     if (tmp->key == key) {
       return tmp->value;
@@ -69,35 +69,32 @@ int findData(struct hashTable *table, int key) {
   return -1;
 }
 
-/**
- * Note: The returned array must be malloced, assume caller calls free().
- */
-int *twoSum(int *nums, int numsSize, int target, int *returnSize) {
-  int *ret = (int *)malloc(sizeof(int) * 2);
-  if (ret == NULL) {
-    return NULL;
-  }
+int* twoSum(int* nums, int numsSize, int target, int* returnSize) {
+  int* ret = (int*)malloc(sizeof(int*) * 2);
+  *returnSize = 0;
   struct hashTable table;
+  memset(&table, 0, sizeof(struct hashTable));
   initHashTable(&table, numsSize);
   for (int i = 0; i < numsSize; i++) {
-    int tmp = findData(&table, target - nums[i]);
-    if (tmp != -1) {
-      ret[0] = tmp;
-      ret[1] = i;
+    int index = find(&table, target - nums[i]);
+    if (index != -1) {
       *returnSize = 2;
+      ret[0] = index;
+      ret[1] = i;
       freeHashTable(&table);
       return ret;
     }
     insertData(&table, nums[i], i);
   }
+  free(ret);
   freeHashTable(&table);
   return NULL;
 }
 
 void main() {
-  int nums[] = {0, 8, 9, 10, 100, 0};
-  int target = 0;
-  int *ret = NULL;
+  int nums[] = {-1, -2, -3, -4, -5};
+  int target = -8;
+  int* ret = NULL;
   int retSize = 0;
 
   ret = twoSum(nums, sizeof(nums) / sizeof(nums[0]), target, &retSize);
